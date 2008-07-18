@@ -1,0 +1,308 @@
+<html>
+  <head>
+    <title>Viewji</title>
+    <script type="text/javascript" src="jquery-1.2.3.js"></script>
+    <script type="text/javascript" src="textbox.js"></script>
+    <script type="text/javascript" src="demos.js"></script>
+    <script type="text/javascript">
+        $(document).ready(setupTextBox);
+    </script>
+    <script type="text/javascript">
+    //TODO: implement image(), skew(), choice(), grid()
+    //TODO: implement transform(mode=CENTER)
+    //TODO: resizable editing box (see saved doc)
+    //TODO: what to do about text? Detect Firefox? SVG fonts?
+    //TODO: how to implement reset()?
+    //TODO: does the background() element make any sense here?
+    //TODO: implement image exporting
+    //TODO: write a test suite/runner
+    //TODO: figure out clipping. what is it, how hard to implement?
+    //TODO: syntax highlighting? command completion? 
+    //      (http://marijn.haverbeke.nl/codemirror/)
+    //TODO: integrate with forms
+    //TODO: animation
+    //TODO: can you disable the stupid "script is taking too long" warning?
+    function demo(n) {
+        document.getElementById("program").value = demos[n];
+    }
+    function draw(){
+        var canvas = document.getElementById('canvas');
+        var dbg = document.getElementById("debug");
+        var drawbtn = document.getElementById("drawbtn");
+        var dbgs = new Array();
+
+        if (canvas.getContext) {
+            var ctx = canvas.getContext("2d");
+            var WIDTH = canvas.width;
+            var HEIGHT = canvas.height;
+
+            function debug(s) {
+                //dbg.value += s;
+                dbgs.push(s);
+            }
+
+            function radians(d) {
+                return (Math.PI * d) / 180;
+            }
+
+            function size(h, w) {
+                canvas.height = h;
+                canvas.width = w;
+                WIDTH = w;
+                HEIGHT = h;
+            }
+
+            function random(a, b) {
+                if (a == undefined && b == undefined)
+                    return Math.random();
+                else if (b == undefined)
+                    return Math.random() * a;
+                else
+                    //XXX: is this evenly distributed?
+                    return Math.floor(Math.random() * (b-a+1)) + a
+            }
+
+            function _colorString(r, g, b, a) {
+                if (r > 0 && r < 1) r = Math.floor(r * 255);
+                if (g != undefined && g > 0 && g < 1) g = Math.floor(g * 255);
+                if (b != undefined && b > 0 && b < 1) b = Math.floor(b * 255);
+
+                if (r < 0) r = 0; if (r > 255) r = 255;
+                if (g < 0) g = 0; if (g > 255) g = 255;
+                if (b < 0) b = 0; if (b > 255) b = 255;
+                if (a < 0) a = 0; if (a > 1) a = 1;
+
+                if (g == undefined && b == undefined && a == undefined)
+                    color = "rgb(" + r + "," + r + "," + r + ")";
+                else if (a == undefined)
+                    color = "rgb(" + r + "," + g + "," + b + ")";
+                else
+                    color = "rgba(" + r + "," + g + "," + b + "," + a + ")";
+                return color;
+            }
+
+            function fill(r, g, b, a) {
+                ctx.fillStyle = _colorString(r,g,b,a);
+            }
+            function nofill() { ctx.fillStyle = _colorString(0,0,0,0); }
+            
+            //NOTE: the NodeBox "stroke" just sets the stroke color;
+            //      the canvas stroke() function actually strokes a path
+            function stroke(r, g, b, a) {
+                ctx.strokeStyle = _colorString(r,g,b,a);
+            }
+            function nostroke() { ctx.strokeStyle = _colorString(0,0,0,0); }
+            function strokewidth(n) { ctx.lineWidth = n; }
+
+            function rect(x1, y1, w, h) {
+                ctx.fillRect(x1, y1, w, h);
+                ctx.strokeRect(x1, y1, w, h);
+            }
+
+            function oval(x, y, width, height) {
+                if (width <= 0 || height <= 0) return;
+
+                ctx.save();
+                ctx.translate(x+width/2, y+height/2);
+                var max = Math.max(width, height);
+                ctx.scale(width/max, height/max);
+                ctx.beginPath();
+                ctx.arc(0, 0, max/2, 0, 2*Math.PI, 0);
+                ctx.stroke();
+                ctx.fill();
+                ctx.closePath();
+                ctx.restore();
+            }
+
+            function line(x1, y1, x2, y2) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.closePath();
+                ctx.restore();
+            }
+
+            function text(str, x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.mozDrawText(str);
+                ctx.restore();
+            }
+
+            function translate(x, y) { ctx.translate(x,y); }
+
+            function rotate(angle) { ctx.rotate(-radians(angle)); }
+
+            function scale(sx, sy) { ctx.scale(sx, sy); }
+
+            function beginpath(x, y) { 
+                if (x == undefined || y == undefined)
+                    ctx.beginPath(); 
+                else
+                {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                }
+            }
+
+            function push() { ctx.save(); }
+            function pop() { ctx.restore(); }
+
+            function endpath() { 
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            function moveto(x, y) { ctx.moveTo(x, y); }
+
+            function lineto(x, y) { ctx.lineTo(x, y); }
+
+            function curveto(cp1x, cp1y, cp2x, cp2y, x, y) {
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
+            }
+
+            ctx.save();
+            nostroke();
+            fill(0);
+            var color = "rgb(0,0,0)";
+            var open_state = 0;
+            dbg.value = "";
+            drawbtn.value = "working...";
+
+            try {
+                ctx.clearRect(0,0,WIDTH,HEIGHT);
+                eval(document.getElementById('program').value);
+                dbg.value = dbgs.join("\n");
+            } catch (e) {
+                alert(e);
+            } finally {
+                drawbtn.value = "draw";
+                ctx.restore();
+            }
+        }
+    }
+    </script>
+    <style type="text/css">
+      canvas { border: 1px solid black; }
+    </style>
+  </head>
+  <body>
+    <table>
+    <tr><td colspan=2>
+        Demos: 
+        <a href="#" onclick="demo(2)">Basics</a>
+        <a href="#" onclick="demo(1)">Fireworks</a>
+        <a href="#" onclick="demo(0)">Superfolia</a>
+    </td></tr>
+    <tr><td valign="top">
+        <div id="textDiv" style="left:0px;top:0px;
+        width:500px;height:400px;position:relative;margin-bottom:10px">
+            <textarea id="program" style="width:500px;height:400px;
+            left:0px;top:0px;position:absolute;"></textarea>
+            <div id="handleCorner" style="width:5px;height:5px;
+                background-color:LightGreen;position:absolute;left:500px;
+                top:400px;cursor:se-resize;"></div>
+        </div>
+        <input type="submit" id="drawbtn" value="draw" onclick="draw()">
+    </div>
+    </td><td valign="top">
+        <canvas id="canvas" width="250" height="400"></canvas>
+    </td></tr><tr><td valign="top">
+    </td></tr>
+    <tr><td colspan=2>
+        <textarea id="debug" rows="30" cols="80"></textarea>
+    </td></tr></table>
+  </body>
+</html>
+<!-- oval test:
+rect(100, 100, 50, 150);
+fill(0, 200, 200);
+oval(100, 100, 50, 150);
+
+rect(10, 50, 40, 40);
+fill(0,200,0);
+oval(10,50,40,40);
+-->
+<!-- Draw a transparent oval on a background object:
+fill(100,200,100);
+rect(10, 10, 100, 100);
+
+nofill();
+stroke(1);
+oval(10, 10, 100, 100);
+--> 
+<!-- from the nodebox docs, draw a triangle:
+beginpath(10,10);
+lineto(40, 40);
+lineto(80, 40);
+endpath();
+-->
+<!-- from the nodebox docs, draw a little hoopteydo:
+beginpath(10,10);
+curveto(100,100,50,0,100,100);
+endpath();
+-->
+<!-- from the nodebox docs, draw a reverse 7:
+beginpath(10, 10);
+lineto(40, 10);
+moveto(10, 10);
+lineto(40, 80);
+endpath();
+-->
+<!-- drawing a radial background:
+size(400,400)
+g = ctx.createRadialGradient(200, 200, 0, 200, 200, 100)
+g.addColorStop(0, "rgb(0,100,0)")
+g.addColorStop(1, "rgb(100,0,100)")
+ctx.fillStyle=g
+rect(0,0,WIDTH,HEIGHT)
+-->
+<!-- Tesselate middle school esses
+
+//draw a middle school s with left corner at x,y with size
+//NOTE: you could draw this with just 2 lines
+function ess(x,y,w,h)
+{
+  stroke(0);
+  beginpath(x + w/2, y);
+  lineto(x, y + h/4);
+  lineto(x + w/2, y + 3*h/4);
+  ctx.stroke();
+  beginpath(x + w/4, y + 2*h/4);
+  lineto(x, y + 3*h/4);
+  lineto(x + w/2, y + h);
+  lineto(x + w, y + 3*h/4);
+  lineto(x + w/2, y + h/4);
+  ctx.stroke();
+  beginpath(x + 3*w/4, y + 2*h/4);
+  lineto(x + w, y + h/4);
+  lineto(x + w/2, y);
+  ctx.stroke();
+}
+
+function tesselate_ess(h,w) {
+  x = y = row = 0;
+  while (1) {
+    ess(x,y,w,h);
+    if (x < WIDTH) {
+      x += w;
+      debug(x);
+      //if (row > 1) break;
+      continue;
+    }
+    if (y < HEIGHT) {
+      row += 1;
+      x = -((row % 2) * (w/2));
+      y += h * (((row>0)*3)/4);
+      debug(x + ", " + y);
+      continue;
+    }
+    break;
+  }
+}
+
+tesselate_ess(100,50);
+-->
+<!-- THOUGHT: it should be really easy to save snippets of useful code -->
