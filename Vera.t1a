@@ -21,6 +21,17 @@ end readonly def
 /FontType 1 def
 /FontMatrix [0.001 0 0 0.001 0 0] def
 /FontBBox {-52 -236 1287 928} readonly def
+%Type 1 BuildChar begins by using the character code as an index 
+%into theEncoding array in the font dictionary to obtain the name 
+%of the character to be built. 
+%Type 1 BuildChar
+%then uses the name of the character to be built as a key in 
+%theCharStrings dictionary (contained in the font dictionary) to 
+%obtain a binary string. The string is an encoded and encrypted 
+%representation of a PostScript language program for that charac- 
+%ter’s outline. Finally, Type 1 BuildChar calls a special version of 
+%stroke or fill, depending on the value of PaintType in the font dic- 
+%tionary, to create the character. 
 /Encoding 256 array
 dup 0 /.notdef put
 dup 1 /.notdef put

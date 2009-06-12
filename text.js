@@ -32,7 +32,7 @@ function cls() {
     xx.clearRect(0, 0, c.width, c.height);
 }
 
-function draw(txt) {
+function draw(txt, canvas) {
 
     if(x.font.borderColor) x.strokeStyle = x.font.borderColor;
     if(x.font.color) x.fillStyle = x.font.color;
@@ -58,9 +58,9 @@ function draw2() {
 }
 
 
-function t1aParse(inp, txt) {
+function t1aParse(font) {
     x.font.letters = new Array();
-    var l = inp.split('\n');
+    var l = font.split('\n');
     var currbuffer = null;
     var currletter = null;
     
